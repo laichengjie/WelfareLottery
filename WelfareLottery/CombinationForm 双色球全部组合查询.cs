@@ -10,42 +10,43 @@ namespace WelfareLottery
     public partial class CombinationForm : Form
     {
         // 控件在 BuildLeftPanel / BuildRightPanel 中创建（构造函数内调用，运行时不可能为空）
-        private readonly SplitContainer _split = null!;
+        // 说明：这些字段在辅助方法中赋值，故不能声明为 readonly（CS0191）
+        private SplitContainer _split = null!;
 
         // ===== 左侧：双色球全部组合查询 =====
-        private readonly Button _btnInit = null!;
-        private readonly Button _btnCancel = null!;
-        private readonly ProgressBar _progress = null!;
-        private readonly Label _status = null!;
+        private Button _btnInit = null!;
+        private Button _btnCancel = null!;
+        private ProgressBar _progress = null!;
+        private Label _status = null!;
 
-        private readonly Button _btnSettings = null!;
+        private Button _btnSettings = null!;
 
-        private readonly Button _btnPrev = null!;
-        private readonly Button _btnNext = null!;
-        private readonly NumericUpDown _numPage = null!;
-        private readonly ComboBox _cboPageSize = null!;
-        private readonly Label _pageInfo = null!;
+        private Button _btnPrev = null!;
+        private Button _btnNext = null!;
+        private NumericUpDown _numPage = null!;
+        private ComboBox _cboPageSize = null!;
+        private Label _pageInfo = null!;
 
-        private readonly NumericUpDown[] _numReds = null!;
-        private readonly NumericUpDown _numBlue = null!;
-        private readonly Button _btnSearch = null!;
-        private readonly Button _btnBackToPages = null!;
+        private NumericUpDown[] _numReds = null!;
+        private NumericUpDown _numBlue = null!;
+        private Button _btnSearch = null!;
+        private Button _btnBackToPages = null!;
 
-        private readonly CheckBox _chkRun3 = null!;
-        private readonly CheckBox _chkRun4 = null!;
-        private readonly CheckBox _chkRun5 = null!;
-        private readonly Label _filterInfo = null!;
+        private CheckBox _chkRun3 = null!;
+        private CheckBox _chkRun4 = null!;
+        private CheckBox _chkRun5 = null!;
+        private Label _filterInfo = null!;
 
-        private readonly DataGridView _grid = null!;
+        private DataGridView _grid = null!;
 
         // ===== 右侧：历史开奖数据采集 =====
-        private readonly Button _btnFetch = null!;
-        private readonly NumericUpDown _numStartYear = null!;
-        private readonly NumericUpDown _numEndYear = null!;
-        private readonly Button _btnShowDraw = null!;
-        private readonly Button _btnDrawSettings = null!;
-        private readonly Label _drawStatus = null!;
-        private readonly DataGridView _gridDraw = null!;
+        private Button _btnFetch = null!;
+        private NumericUpDown _numStartYear = null!;
+        private NumericUpDown _numEndYear = null!;
+        private Button _btnShowDraw = null!;
+        private Button _btnDrawSettings = null!;
+        private Label _drawStatus = null!;
+        private DataGridView _gridDraw = null!;
         private CancellationTokenSource? _drawCts;
 
         private CancellationTokenSource? _cts;
@@ -313,6 +314,7 @@ namespace WelfareLottery
                 AllowUserToResizeRows = false,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                 RowHeadersWidth = 56,
+                RowTemplate = { Height = 45 },
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect
             };
             _grid.RowPostPaint += (_, e) =>
@@ -411,8 +413,10 @@ namespace WelfareLottery
                 ReadOnly = true,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
+                AllowUserToResizeRows = false,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                 RowHeadersWidth = 40,
+                RowTemplate = { Height = 45 },
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect
             };
 
