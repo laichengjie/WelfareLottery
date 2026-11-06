@@ -19,8 +19,6 @@ namespace WelfareLottery
         private ProgressBar _progress = null!;
         private Label _status = null!;
 
-        private Button _btnSettings = null!;
-
         private Button _btnPrev = null!;
         private Button _btnNext = null!;
         private NumericUpDown _numPage = null!;
@@ -78,9 +76,9 @@ namespace WelfareLottery
 
             Controls.Add(_split);
 
-            _grid.DataBindingComplete += (_, __) => ApplyColumnSettings();
+            _grid.DataBindingComplete += (_, __) => { FixColumnWidth(_grid); ApplyColumnSettings(); };
             _grid.DataError += (_, e) => e.ThrowException = false;   // 不弹默认错误框
-            _gridDraw.DataBindingComplete += (_, __) => ApplyDrawColumnSettings();
+            _gridDraw.DataBindingComplete += (_, __) => { FixColumnWidth(_gridDraw); ApplyDrawColumnSettings(); };
             _gridDraw.DataError += (_, e) => e.ThrowException = false;
 
             Load += (_, __) =>
@@ -134,14 +132,6 @@ namespace WelfareLottery
                 AutoEllipsis = true,
                 ForeColor = Color.DimGray
             };
-
-            _btnSettings = new Button
-            {
-                Text = "设置",
-                Size = new Size(64, 32),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
-            };
-            _btnSettings.Click += (_, __) => OpenColumnSettings();
 
             _btnPrev = new Button
             {
@@ -312,9 +302,8 @@ namespace WelfareLottery
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
                 AllowUserToResizeRows = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
                 RowHeadersWidth = 56,
-                RowTemplate = { Height = 45 },
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect
             };
             _grid.RowPostPaint += (_, e) =>
@@ -328,7 +317,7 @@ namespace WelfareLottery
 
             var leftControls = new Control[]
             {
-                _btnInit, _btnCancel, _progress, _status, _btnSettings,
+                _btnInit, _btnCancel, _progress, _status,
                 _btnPrev, _btnNext, _numPage, lblPageSize, _cboPageSize, _pageInfo,
                 lblSearch, lblBlue, _numBlue, _btnSearch, _btnBackToPages,
                 lblFilter, _chkRun3, _chkRun4, _chkRun5, _filterInfo
@@ -413,10 +402,8 @@ namespace WelfareLottery
                 ReadOnly = true,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
-                AllowUserToResizeRows = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
                 RowHeadersWidth = 40,
-                RowTemplate = { Height = 45 },
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect
             };
 
@@ -431,7 +418,6 @@ namespace WelfareLottery
         private void LayoutRightAnchors()
         {
             int leftWidth = _split.Panel1.ClientSize.Width;
-            _btnSettings.Left = leftWidth - _btnSettings.Width - 12;
             _status.Width = Math.Max(120, leftWidth - _status.Left - 12);
             _pageInfo.Width = Math.Max(160, leftWidth - _pageInfo.Left - 8);
             _filterInfo.Width = Math.Max(160, leftWidth - _filterInfo.Left - 8);
@@ -446,36 +432,14 @@ namespace WelfareLottery
         /// <summary>列设置在本界面的存储键</summary>
         private const string ColumnSettingKey = nameof(CombinationForm);
 
-        /// <summary>打开列显示设置，保存到 SQLite 并立即应用</summary>
-        private void OpenColumnSettings()
+        /// <summary>按数据库中保存的设置应用列显示（无设置时全部显示）</summary>
+        /// <summary>所有数据列宽度固定为 45（在 DataBindingComplete 中调用，列自动生成后生效）</summary>
+        private static void FixColumnWidth(DataGridView grid)
         {
-            var items = _grid.Columns.Cast<DataGridViewColumn>()
-                .OrderBy(c => c.DisplayIndex)
-                .Select(c => (key: GetColumnKey(c), text: string.IsNullOrEmpty(c.HeaderText) ? c.Name : c.HeaderText, visible: c.Visible))
-                .ToList();
-            if (items.Count == 0)
-            {
-                MessageBox.Show("当前没有可设置的列，请先加载数据。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            using var dialog = new ColumnSettingForm("全部组合查询 - 列显示设置", items);
-            if (dialog.ShowDialog(this) != DialogResult.OK) return;
-
-            try
-            {
-                ColumnSettingService.Save(ColumnSettingKey, dialog.Result);
-                ApplyColumnSettings();
-                _status.Text = "列显示设置已保存。";
-                _status.ForeColor = Color.Green;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("保存列设置失败：" + ex.Message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            foreach (DataGridViewColumn column in grid.Columns)
+                column.Width = 60;
         }
 
-        /// <summary>按数据库中保存的设置应用列显示（无设置时全部显示）</summary>
         private void ApplyColumnSettings()
         {
             if (_grid.Columns.Count == 0) return;
@@ -592,7 +556,6 @@ namespace WelfareLottery
 
             _btnInit.Enabled = idle;
             _btnInit.Text = _busy ? "正在初始化 ..." : "初始化组合数据";
-            _btnSettings.Enabled = idle;
             _btnCancel.Enabled = _busy;
             _progress.Visible = _busy;
             _numPage.Enabled = idle;
