@@ -33,6 +33,9 @@ namespace WelfareLottery
         private CheckBox _chkRun3 = null!;
         private CheckBox _chkRun4 = null!;
         private CheckBox _chkRun5 = null!;
+        private CheckBox _chkExcRun3 = null!;   // 勾选＝排除该形态；不勾选＝包含该形态
+        private CheckBox _chkExcRun4 = null!;
+        private CheckBox _chkExcRun5 = null!;
         private Label _filterInfo = null!;
 
         private DataGridView _grid = null!;
@@ -44,6 +47,16 @@ namespace WelfareLottery
         private Button _btnShowDraw = null!;
         private Button _btnDrawSettings = null!;
         private Label _drawStatus = null!;
+
+        // 右侧红球形态过滤（查询/排除含连号形态的开奖记录）
+        private CheckBox _chkDrawRun3 = null!;
+        private CheckBox _chkDrawRun4 = null!;
+        private CheckBox _chkDrawRun5 = null!;
+        private CheckBox _chkDrawExcRun3 = null!;   // 勾选＝排除该形态；不勾选＝包含该形态
+        private CheckBox _chkDrawExcRun4 = null!;
+        private CheckBox _chkDrawExcRun5 = null!;
+        private Label _drawFilterInfo = null!;
+
         private DataGridView _gridDraw = null!;
         private CancellationTokenSource? _drawCts;
 
@@ -263,36 +276,60 @@ namespace WelfareLottery
 
             _chkRun3 = new CheckBox
             {
-                Text = "排除三连号",
+                Text = "三连号",
                 Location = new Point(100, 130),
-                Size = new Size(96, 24)
+                Size = new Size(66, 24)
+            };
+            _chkExcRun3 = new CheckBox
+            {
+                Text = "排除",
+                Location = new Point(170, 130),
+                Size = new Size(58, 24)
             };
             _chkRun4 = new CheckBox
             {
-                Text = "排除四连号",
-                Location = new Point(200, 130),
-                Size = new Size(96, 24)
+                Text = "四连号",
+                Location = new Point(232, 130),
+                Size = new Size(66, 24)
+            };
+            _chkExcRun4 = new CheckBox
+            {
+                Text = "排除",
+                Location = new Point(302, 130),
+                Size = new Size(58, 24)
             };
             _chkRun5 = new CheckBox
             {
-                Text = "排除五连号",
-                Location = new Point(300, 130),
-                Size = new Size(96, 24)
+                Text = "五连号",
+                Location = new Point(364, 130),
+                Size = new Size(66, 24)
+            };
+            _chkExcRun5 = new CheckBox
+            {
+                Text = "排除",
+                Location = new Point(434, 130),
+                Size = new Size(58, 24)
             };
 
             var filterTip = new ToolTip();
-            filterTip.SetToolTip(_chkRun3, "红球中出现 3 个连续号码（如 1 2 3、2 3 4）的组合将被排除，4/5 连号也一并排除；只影响红区");
-            filterTip.SetToolTip(_chkRun4, "红球中出现 4 个连续号码（如 1 2 3 4）的组合将被排除，5 连号也一并排除；只影响红区");
-            filterTip.SetToolTip(_chkRun5, "红球中出现 5 个连续号码（如 1 2 3 4 5）的组合将被排除；只影响红区");
+            filterTip.SetToolTip(_chkRun3, "红球中出现 3 个连续号码（如 1 2 3、2 3 4）；只影响红区");
+            filterTip.SetToolTip(_chkRun4, "红球中出现 4 个连续号码（如 1 2 3 4）；只影响红区");
+            filterTip.SetToolTip(_chkRun5, "红球中出现 5 个连续号码（如 1 2 3 4 5）；只影响红区");
+            filterTip.SetToolTip(_chkExcRun3, "勾选＝剔除含三连号的组合；不勾选＝只显示含三连号的组合");
+            filterTip.SetToolTip(_chkExcRun4, "勾选＝剔除含四连号的组合；不勾选＝只显示含四连号的组合");
+            filterTip.SetToolTip(_chkExcRun5, "勾选＝剔除含五连号的组合；不勾选＝只显示含五连号的组合");
 
             _chkRun3.CheckedChanged += (_, __) => { if (!_suppressFilterEvent) _ = ApplyRunFilterAsync(); };
             _chkRun4.CheckedChanged += (_, __) => { if (!_suppressFilterEvent) _ = ApplyRunFilterAsync(); };
             _chkRun5.CheckedChanged += (_, __) => { if (!_suppressFilterEvent) _ = ApplyRunFilterAsync(); };
+            _chkExcRun3.CheckedChanged += (_, __) => { if (!_suppressFilterEvent) _ = ApplyRunFilterAsync(); };
+            _chkExcRun4.CheckedChanged += (_, __) => { if (!_suppressFilterEvent) _ = ApplyRunFilterAsync(); };
+            _chkExcRun5.CheckedChanged += (_, __) => { if (!_suppressFilterEvent) _ = ApplyRunFilterAsync(); };
 
             _filterInfo = new Label
             {
                 Text = "未过滤",
-                Location = new Point(404, 134),
+                Location = new Point(496, 134),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 ForeColor = Color.DimGray,
                 AutoEllipsis = true
@@ -333,7 +370,7 @@ namespace WelfareLottery
                 _btnInit, _btnCancel, _progress, _status,
                 _btnPrev, _btnNext, _numPage, lblPageSize, _cboPageSize, _pageInfo,
                 lblSearch, lblBlue, _numBlue, _btnSearch, _btnBackToPages,
-                lblFilter, _chkRun3, _chkRun4, _chkRun5, _filterInfo
+                lblFilter, _chkRun3, _chkExcRun3, _chkRun4, _chkExcRun4, _chkRun5, _chkExcRun5, _filterInfo
             };
             _split.Panel1.Controls.AddRange(leftControls);
             _split.Panel1.Controls.AddRange(_numReds);
@@ -399,10 +436,79 @@ namespace WelfareLottery
             };
             _btnDrawSettings.Click += (_, __) => OpenDrawColumnSettings();
 
+            // 红球形态过滤行：勾选后筛出含对应连号形态的开奖记录
+            var lblDrawFilter = new Label
+            {
+                Text = "红球形态",
+                Location = new Point(12, 58),
+                AutoSize = true
+            };
+
+            _chkDrawRun3 = new CheckBox
+            {
+                Text = "三连号",
+                Location = new Point(82, 54),
+                Size = new Size(66, 24)
+            };
+            _chkDrawExcRun3 = new CheckBox
+            {
+                Text = "排除",
+                Location = new Point(152, 54),
+                Size = new Size(58, 24)
+            };
+            _chkDrawRun4 = new CheckBox
+            {
+                Text = "四连号",
+                Location = new Point(214, 54),
+                Size = new Size(66, 24)
+            };
+            _chkDrawExcRun4 = new CheckBox
+            {
+                Text = "排除",
+                Location = new Point(284, 54),
+                Size = new Size(58, 24)
+            };
+            _chkDrawRun5 = new CheckBox
+            {
+                Text = "五连号",
+                Location = new Point(346, 54),
+                Size = new Size(66, 24)
+            };
+            _chkDrawExcRun5 = new CheckBox
+            {
+                Text = "排除",
+                Location = new Point(416, 54),
+                Size = new Size(58, 24)
+            };
+
+            _drawFilterInfo = new Label
+            {
+                Text = "未过滤",
+                Location = new Point(478, 58),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                ForeColor = Color.DimGray,
+                AutoEllipsis = true
+            };
+
+            var drawFilterTip = new ToolTip();
+            drawFilterTip.SetToolTip(_chkDrawRun3, "红球中出现 3 个连续号码（如 01 02 03、23 24 25），四/五连号也满足");
+            drawFilterTip.SetToolTip(_chkDrawRun4, "红球中出现 4 个连续号码（如 01 02 03 04），五连号也满足");
+            drawFilterTip.SetToolTip(_chkDrawRun5, "红球中出现 5 个连续号码（如 01 02 03 04 05）");
+            drawFilterTip.SetToolTip(_chkDrawExcRun3, "勾选＝剔除含三连号的记录；不勾选＝只显示含三连号的记录");
+            drawFilterTip.SetToolTip(_chkDrawExcRun4, "勾选＝剔除含四连号的记录；不勾选＝只显示含四连号的记录");
+            drawFilterTip.SetToolTip(_chkDrawExcRun5, "勾选＝剔除含五连号的记录；不勾选＝只显示含五连号的记录");
+
+            _chkDrawRun3.CheckedChanged += (_, __) => ApplyDrawFilter();
+            _chkDrawRun4.CheckedChanged += (_, __) => ApplyDrawFilter();
+            _chkDrawRun5.CheckedChanged += (_, __) => ApplyDrawFilter();
+            _chkDrawExcRun3.CheckedChanged += (_, __) => ApplyDrawFilter();
+            _chkDrawExcRun4.CheckedChanged += (_, __) => ApplyDrawFilter();
+            _chkDrawExcRun5.CheckedChanged += (_, __) => ApplyDrawFilter();
+
             _drawStatus = new Label
             {
                 Text = "就绪",
-                Location = new Point(12, 54),
+                Location = new Point(12, 84),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 AutoEllipsis = true,
                 ForeColor = Color.DimGray
@@ -410,7 +516,7 @@ namespace WelfareLottery
 
             _gridDraw = new DataGridView
             {
-                Location = new Point(12, 84),
+                Location = new Point(12, 112),
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
                 ReadOnly = true,
                 AllowUserToAddRows = false,
@@ -423,7 +529,10 @@ namespace WelfareLottery
             _split.Panel2.Controls.AddRange(new Control[]
             {
                 _btnFetch, lblStart, _numStartYear, lblEnd, _numEndYear,
-                _btnShowDraw, _btnDrawSettings, _drawStatus, _gridDraw
+                _btnShowDraw, _btnDrawSettings,
+                lblDrawFilter, _chkDrawRun3, _chkDrawExcRun3, _chkDrawRun4, _chkDrawExcRun4,
+                _chkDrawRun5, _chkDrawExcRun5, _drawFilterInfo,
+                _drawStatus, _gridDraw
             });
 
             StylePrimary(_btnFetch);
@@ -438,10 +547,11 @@ namespace WelfareLottery
             int leftWidth = _split.Panel1.ClientSize.Width;
             _status.Width = Math.Max(120, leftWidth - _status.Left - 12);
             _pageInfo.Width = Math.Max(160, leftWidth - _pageInfo.Left - 8);
-            _filterInfo.Width = Math.Max(160, leftWidth - _filterInfo.Left - 8);
+            _filterInfo.Width = Math.Max(120, leftWidth - _filterInfo.Left - 8);
 
             int rightWidth = _split.Panel2.ClientSize.Width;
             _btnDrawSettings.Left = rightWidth - _btnDrawSettings.Width - 12;
+            _drawFilterInfo.Width = Math.Max(120, rightWidth - _drawFilterInfo.Left - 12);
             _drawStatus.Width = Math.Max(160, rightWidth - _drawStatus.Left - 12);
         }
 
@@ -658,17 +768,20 @@ namespace WelfareLottery
             _chkRun3.Enabled = idle;
             _chkRun4.Enabled = idle;
             _chkRun5.Enabled = idle;
+            _chkExcRun3.Enabled = idle;
+            _chkExcRun4.Enabled = idle;
+            _chkExcRun5.Enabled = idle;
 
             UseWaitCursor = _busy || _loadingPage || _filtering;
         }
 
-        /// <summary>当前勾选的红球形态过滤条件</summary>
+        /// <summary>当前勾选的红球形态过滤条件（按各条件的"排除"勾选决定包含/排除模式）</summary>
         private RunFilter CurrentRunFilter()
         {
             var filter = RunFilter.None;
-            if (_chkRun3.Checked) filter |= RunFilter.Exclude3;
-            if (_chkRun4.Checked) filter |= RunFilter.Exclude4;
-            if (_chkRun5.Checked) filter |= RunFilter.Exclude5;
+            if (_chkRun3.Checked) filter |= _chkExcRun3.Checked ? RunFilter.Exclude3 : RunFilter.Include3;
+            if (_chkRun4.Checked) filter |= _chkExcRun4.Checked ? RunFilter.Exclude4 : RunFilter.Include4;
+            if (_chkRun5.Checked) filter |= _chkExcRun5.Checked ? RunFilter.Exclude5 : RunFilter.Include5;
             return filter;
         }
 
@@ -726,7 +839,7 @@ namespace WelfareLottery
 
             _filterInfo.Text = kept >= total
                 ? $"未过滤：{total:N0} 条"
-                : $"过滤后：{kept:N0} / {total:N0} 条（已排除 {total - kept:N0} 条）";
+                : $"过滤后：{kept:N0} / {total:N0} 条（已滤除 {total - kept:N0} 条）";
         }
 
         /// <summary>按号码查询（满 6 红走组合排名精确定位，否则在内存中按包含匹配扫描）</summary>
@@ -1034,9 +1147,83 @@ namespace WelfareLottery
         {
             _btnFetch.Enabled = _btnShowDraw.Enabled = _btnDrawSettings.Enabled =
                 _numStartYear.Enabled = _numEndYear.Enabled = !busy;
+            _chkDrawRun3.Enabled = _chkDrawRun4.Enabled = _chkDrawRun5.Enabled = !busy;
+            _chkDrawExcRun3.Enabled = _chkDrawExcRun4.Enabled = _chkDrawExcRun5.Enabled = !busy;
             _btnFetch.Text = busy ? "正在获取 ..." : "按年份获取到内存";
             if (message != null)
                 _drawStatus.Text = message;
+        }
+
+        // ============================ 右侧：红球形态过滤 ============================
+
+        /// <summary>按勾选的红球形态（连号）及包含/排除模式过滤右侧开奖记录；全部不勾选时显示全部</summary>
+        private void ApplyDrawFilter()
+        {
+            try
+            {
+                bool run3 = _chkDrawRun3.Checked;
+                bool run4 = _chkDrawRun4.Checked;
+                bool run5 = _chkDrawRun5.Checked;
+                bool exc3 = _chkDrawExcRun3.Checked;
+                bool exc4 = _chkDrawExcRun4.Checked;
+                bool exc5 = _chkDrawExcRun5.Checked;
+
+                var full = LotteryService.GetDataTable();
+
+                if (!run3 && !run4 && !run5)
+                {
+                    _gridDraw.DataSource = full;
+                    _drawFilterInfo.Text = "未过滤";
+                    _drawStatus.Text = full.Rows.Count == 0
+                        ? "内存中暂无开奖数据，请先点击\"按年份获取到内存\"。"
+                        : $"已显示全部 {full.Rows.Count:N0} 期。";
+                    _drawStatus.ForeColor = Color.DimGray;
+                    return;
+                }
+
+                var conditions = new List<string>();
+                if (run3) conditions.Add(exc3 ? "不含三连号" : "含三连号");
+                if (run4) conditions.Add(exc4 ? "不含四连号" : "含四连号");
+                if (run5) conditions.Add(exc5 ? "不含五连号" : "含五连号");
+
+                var filtered = full.Clone();
+                foreach (DataRow row in full.Rows)
+                {
+                    // 多个条件同时勾选时为"且"关系
+                    bool keep = true;
+                    if (run3) keep &= exc3 ? !HasConsecutiveRun(row, 3) : HasConsecutiveRun(row, 3);
+                    if (run4) keep &= exc4 ? !HasConsecutiveRun(row, 4) : HasConsecutiveRun(row, 4);
+                    if (run5) keep &= exc5 ? !HasConsecutiveRun(row, 5) : HasConsecutiveRun(row, 5);
+                    if (keep) filtered.ImportRow(row);
+                }
+
+                _gridDraw.DataSource = filtered;
+                _drawFilterInfo.Text = $"条件：{string.Join(" 且 ", conditions)}";
+                _drawStatus.Text = $"红球形态过滤：{filtered.Rows.Count:N0} / {full.Rows.Count:N0} 期满足选中条件。";
+                _drawStatus.ForeColor = Color.DimGray;
+            }
+            catch (Exception ex)
+            {
+                _drawStatus.Text = "形态过滤失败：" + ex.Message;
+                _drawStatus.ForeColor = Color.Red;
+            }
+        }
+
+        /// <summary>判断某期红球（Red1..Red6）中是否存在至少 length 个连续号码</summary>
+        private static bool HasConsecutiveRun(DataRow row, int length)
+        {
+            var reds = new int[6];
+            for (int i = 0; i < 6; i++)
+                reds[i] = row["Red" + (i + 1)] == DBNull.Value ? 0 : Convert.ToInt32(row["Red" + (i + 1)]);
+            Array.Sort(reds);
+
+            int run = 1;
+            for (int i = 1; i < 6; i++)
+            {
+                run = reds[i] == reds[i - 1] + 1 ? run + 1 : 1;
+                if (run >= length) return true;
+            }
+            return false;
         }
     }
 }

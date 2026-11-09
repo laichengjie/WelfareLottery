@@ -15,7 +15,13 @@ namespace WelfareLottery
         /// <summary>排除含 4 连号（如 1 2 3 4）的组合，含 5 连号的一并排除</summary>
         Exclude4 = 2,
         /// <summary>排除 5 连号（如 1 2 3 4 5）的组合</summary>
-        Exclude5 = 4
+        Exclude5 = 4,
+        /// <summary>只保留含 3 连号及以上（最长连号 ≥ 3）的组合</summary>
+        Include3 = 8,
+        /// <summary>只保留含 4 连号及以上（最长连号 ≥ 4）的组合</summary>
+        Include4 = 16,
+        /// <summary>只保留含 5 连号（最长连号 = 5）的组合</summary>
+        Include5 = 32
     }
 
     /// <summary>
@@ -195,7 +201,7 @@ namespace WelfareLottery
             for (long c = 0; c < combos; c++)
             {
                 int offset = (int)(c * BlueCount * FieldsPerRow);
-                if (IsExcludedRun(rows, offset, filter)) continue;
+                if (!MatchesRunFilter(rows, offset, filter)) continue;
 
                 long source = c * BlueCount;
                 for (int b = 0; b < BlueCount && kept < count; b++)
@@ -217,8 +223,12 @@ namespace WelfareLottery
             return kept;
         }
 
-        /// <summary>判断该行红球的最长连续链是否命中要排除的形态</summary>
-        private static bool IsExcludedRun(byte[] rows, int offset, RunFilter filter)
+        /// <summary>
+        /// 判断该行红球（最长连续链 maxRun）是否满足所有勾选条件：
+        /// Exclude* 要求不含对应及以上连号；Include* 要求含对应及以上连号。
+        /// 多个条件同时勾选时为"且"关系。
+        /// </summary>
+        private static bool MatchesRunFilter(byte[] rows, int offset, RunFilter filter)
         {
             int maxRun = 1;
             int run = 1;
@@ -228,9 +238,13 @@ namespace WelfareLottery
                 if (run > maxRun) maxRun = run;
             }
 
-            return ((filter & RunFilter.Exclude3) != 0 && maxRun >= 3)
-                   || ((filter & RunFilter.Exclude4) != 0 && maxRun >= 4)
-                   || ((filter & RunFilter.Exclude5) != 0 && maxRun >= 5);
+            if ((filter & RunFilter.Exclude3) != 0 && maxRun >= 3) return false;
+            if ((filter & RunFilter.Exclude4) != 0 && maxRun >= 4) return false;
+            if ((filter & RunFilter.Exclude5) != 0 && maxRun >= 5) return false;
+            if ((filter & RunFilter.Include3) != 0 && maxRun < 3) return false;
+            if ((filter & RunFilter.Include4) != 0 && maxRun < 4) return false;
+            if ((filter & RunFilter.Include5) != 0 && maxRun < 5) return false;
+            return true;
         }
 
         /// <summary>
@@ -313,7 +327,7 @@ namespace WelfareLottery
                         continue;   // 防御：与内存数据不一致时跳过
                     }
 
-                    if (filter != RunFilter.None && IsExcludedRun(rows, o, filter)) continue;
+                    if (filter != RunFilter.None && !MatchesRunFilter(rows, o, filter)) continue;
 
                     table.Rows.Add(ordered[0], ordered[1], ordered[2], ordered[3], ordered[4], ordered[5], b);
                     if (table.Rows.Count >= limit) break;
