@@ -9,9 +9,7 @@ namespace WelfareLottery
         private readonly Label _lblTitle;
         private readonly Label _lblSubTitle;
 
-        private readonly Button _btnCollect;
         private readonly Button _btnCombination;
-        private readonly Button _btnHistory;
         private readonly Button _btnRefresh;
         private readonly Button _btnVacuum;
 
@@ -57,14 +55,8 @@ namespace WelfareLottery
             _header.Controls.Add(_lblTitle);
             _header.Controls.Add(_lblSubTitle);
 
-            _btnCollect = CreateNavButton("开奖数据采集", "按年份下载到内存（不写数据库）", 24, 120);
-            _btnCollect.Click += (_, __) => OpenChild(new DrawDataCollection());
-
-            _btnCombination = CreateNavButton("全部组合查询", "左：内存生成全部组合并排序查询；右：历史开奖数据采集", 24, 196);
+            _btnCombination = CreateNavButton("全部组合查询", "左：内存生成全部组合并排序查询；右：历史开奖数据采集", 24, 120);
             _btnCombination.Click += (_, __) => OpenChild(new CombinationForm());
-
-            _btnHistory = CreateNavButton("历史数据分析", "查找重复开奖号码、按号码筛选历史记录", 24, 272);
-            _btnHistory.Click += (_, __) => OpenChild(new HistoryDataAnalysis());
 
             var statsBox = new GroupBox
             {
@@ -145,9 +137,7 @@ namespace WelfareLottery
             };
 
             Controls.Add(_header);
-            Controls.Add(_btnCollect);
             Controls.Add(_btnCombination);
-            Controls.Add(_btnHistory);
             Controls.Add(statsBox);
             Controls.Add(_lblStatus);
             Controls.Add(tip);

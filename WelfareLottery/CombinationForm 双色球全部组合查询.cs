@@ -895,8 +895,8 @@ namespace WelfareLottery
 
         // ============================ 右侧：历史开奖采集逻辑 ============================
 
-        /// <summary>右侧列设置的存储键（沿用独立采集界面的键，设置可互通）</summary>
-        private const string DrawColumnSettingKey = nameof(DrawDataCollection);
+        /// <summary>右侧列设置的存储键（沿用原独立采集界面的键，设置可互通）</summary>
+        private const string DrawColumnSettingKey = "DrawDataCollection";
 
         /// <summary>打开右侧列显示设置，保存到 SQLite 并立即应用</summary>
         private void OpenDrawColumnSettings()

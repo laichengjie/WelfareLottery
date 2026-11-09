@@ -111,14 +111,12 @@ static class Program
                 try
                 {
                     using var main = new MainForm();
-                    using var collect = new DrawDataCollection();
                     using var combo = new CombinationForm();
-                    using var history = new HistoryDataAnalysis();
                     using var settings = new ColumnSettingForm("测试", new List<(string key, string text, bool visible)>
                     {
                         ("Code", "期号", true), ("Blue", "蓝球", false)
                     });
-                    Console.WriteLine("窗体构造测试通过：MainForm / DrawDataCollection / CombinationForm / HistoryDataAnalysis / ColumnSettingForm");
+                    Console.WriteLine("窗体构造测试通过：MainForm / CombinationForm / ColumnSettingForm");
                 }
                 catch (Exception ex)
                 {
