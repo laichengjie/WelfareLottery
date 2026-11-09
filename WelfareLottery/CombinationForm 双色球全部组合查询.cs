@@ -64,6 +64,7 @@ namespace WelfareLottery
             MinimumSize = new Size(1240, 620);
             StartPosition = FormStartPosition.CenterParent;
             Font = new Font("Microsoft YaHei UI", 9F);
+            BackColor = PageBg;
 
             _split = new SplitContainer
             {
@@ -73,6 +74,9 @@ namespace WelfareLottery
 
             BuildLeftPanel();
             BuildRightPanel();
+
+            _split.Panel1.BackColor = PageBg;
+            _split.Panel2.BackColor = PageBg;
 
             Controls.Add(_split);
 
@@ -315,6 +319,15 @@ namespace WelfareLottery
                     Color.DimGray, TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
             };
 
+            // 统一美化：按钮与列表样式
+            StylePrimary(_btnInit);
+            StyleSecondary(_btnCancel);
+            StyleSecondary(_btnPrev);
+            StyleSecondary(_btnNext);
+            StyleSecondary(_btnSearch);
+            StyleSecondary(_btnBackToPages);
+            StyleGrid(_grid);
+
             var leftControls = new Control[]
             {
                 _btnInit, _btnCancel, _progress, _status,
@@ -412,6 +425,11 @@ namespace WelfareLottery
                 _btnFetch, lblStart, _numStartYear, lblEnd, _numEndYear,
                 _btnShowDraw, _btnDrawSettings, _drawStatus, _gridDraw
             });
+
+            StylePrimary(_btnFetch);
+            StyleSecondary(_btnShowDraw);
+            StyleSecondary(_btnDrawSettings);
+            StyleGrid(_gridDraw);
         }
 
         /// <summary>首次布局后按面板实际宽度对齐两侧的右锚定控件</summary>
@@ -438,6 +456,75 @@ namespace WelfareLottery
         {
             foreach (DataGridViewColumn column in grid.Columns)
                 column.Width = 60;
+        }
+
+        // ============================ 界面美化 ============================
+
+        private static readonly Color PageBg = Color.FromArgb(245, 246, 248);        // 界面背景
+        private static readonly Color AccentColor = Color.FromArgb(37, 99, 235);     // 主色（蓝）
+        private static readonly Color AccentHover = Color.FromArgb(29, 78, 216);     // 主色悬停
+        private static readonly Color TextDark = Color.FromArgb(31, 41, 55);         // 正文深灰
+        private static readonly Color GridHeaderBg = Color.FromArgb(240, 242, 245);  // 表头背景
+        private static readonly Color GridAltRow = Color.FromArgb(247, 249, 252);    // 斑马纹
+        private static readonly Color GridLine = Color.FromArgb(229, 231, 235);      // 网格线
+        private static readonly Color GridSelectBg = Color.FromArgb(219, 234, 254);  // 选中行背景
+        private static readonly Color GridSelectFg = Color.FromArgb(30, 58, 138);    // 选中行文字
+
+        /// <summary>主要操作按钮：蓝色填充、白字、无边框</summary>
+        private static void StylePrimary(Button b)
+        {
+            b.FlatStyle = FlatStyle.Flat;
+            b.FlatAppearance.BorderSize = 0;
+            b.BackColor = AccentColor;
+            b.ForeColor = Color.White;
+            b.FlatAppearance.MouseOverBackColor = AccentHover;
+            b.Cursor = Cursors.Hand;
+        }
+
+        /// <summary>次要按钮：白底细边框、深灰字</summary>
+        private static void StyleSecondary(Button b)
+        {
+            b.FlatStyle = FlatStyle.Flat;
+            b.FlatAppearance.BorderSize = 1;
+            b.FlatAppearance.BorderColor = Color.FromArgb(209, 213, 219);
+            b.BackColor = Color.White;
+            b.ForeColor = Color.FromArgb(55, 65, 81);
+            b.FlatAppearance.MouseOverBackColor = Color.FromArgb(243, 244, 246);
+            b.Cursor = Cursors.Hand;
+        }
+
+        /// <summary>列表统一美化：白底、浅灰表头、斑马纹、柔和选中色</summary>
+        private static void StyleGrid(DataGridView g)
+        {
+            g.BackgroundColor = Color.White;
+            g.BorderStyle = BorderStyle.FixedSingle;
+            g.EnableHeadersVisualStyles = false;
+
+            g.ColumnHeadersDefaultCellStyle.BackColor = GridHeaderBg;
+            g.ColumnHeadersDefaultCellStyle.ForeColor = TextDark;
+            g.ColumnHeadersDefaultCellStyle.SelectionBackColor = GridHeaderBg;
+            g.ColumnHeadersDefaultCellStyle.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
+            g.ColumnHeadersDefaultCellStyle.Padding = new Padding(4, 6, 4, 6);
+            g.ColumnHeadersHeight = 36;
+            g.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            g.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
+
+            g.RowHeadersDefaultCellStyle.BackColor = GridHeaderBg;
+            g.RowHeadersDefaultCellStyle.SelectionBackColor = GridHeaderBg;
+            g.RowHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
+
+            g.DefaultCellStyle.BackColor = Color.White;
+            g.DefaultCellStyle.ForeColor = TextDark;
+            g.DefaultCellStyle.SelectionBackColor = GridSelectBg;
+            g.DefaultCellStyle.SelectionForeColor = GridSelectFg;
+            g.DefaultCellStyle.Padding = new Padding(4, 0, 4, 0);
+
+            g.AlternatingRowsDefaultCellStyle.BackColor = GridAltRow;
+            g.AlternatingRowsDefaultCellStyle.SelectionBackColor = GridSelectBg;
+            g.AlternatingRowsDefaultCellStyle.SelectionForeColor = GridSelectFg;
+
+            g.GridColor = GridLine;
+            g.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
         }
 
         private void ApplyColumnSettings()
