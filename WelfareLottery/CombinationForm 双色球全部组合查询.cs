@@ -40,6 +40,9 @@ namespace WelfareLottery
 
         private DataGridView _grid = null!;
 
+        private Button _btnNumSpecs = null!;    // 左侧：号码数组筛选设置入口
+        private List<NumberSpec> _numberSpecs = new();
+
         // ===== 右侧：历史开奖数据采集 =====
         private Button _btnFetch = null!;
         private NumericUpDown _numStartYear = null!;
@@ -58,6 +61,10 @@ namespace WelfareLottery
         private Label _drawFilterInfo = null!;
 
         private DataGridView _gridDraw = null!;
+
+        private Button _btnDrawNumSpecs = null!;    // 右侧：号码数组筛选设置入口
+        private List<NumberSpec> _drawNumSpecs = new();
+
         private CancellationTokenSource? _drawCts;
 
         private CancellationTokenSource? _cts;
@@ -266,6 +273,14 @@ namespace WelfareLottery
             };
             _btnBackToPages.Click += async (_, __) => await LoadPageAsync(_pageIndex);
 
+            _btnNumSpecs = new Button
+            {
+                Text = "号码数组筛选",
+                Location = new Point(646, 90),
+                Size = new Size(110, 30)
+            };
+            _btnNumSpecs.Click += (_, __) => OpenNumberSpecDialog();
+
             // 红球形态过滤行（只作用于红区）
             var lblFilter = new Label
             {
@@ -363,13 +378,14 @@ namespace WelfareLottery
             StyleSecondary(_btnNext);
             StyleSecondary(_btnSearch);
             StyleSecondary(_btnBackToPages);
+            StyleSecondary(_btnNumSpecs);
             StyleGrid(_grid);
 
             var leftControls = new Control[]
             {
                 _btnInit, _btnCancel, _progress, _status,
                 _btnPrev, _btnNext, _numPage, lblPageSize, _cboPageSize, _pageInfo,
-                lblSearch, lblBlue, _numBlue, _btnSearch, _btnBackToPages,
+                lblSearch, lblBlue, _numBlue, _btnSearch, _btnBackToPages, _btnNumSpecs,
                 lblFilter, _chkRun3, _chkExcRun3, _chkRun4, _chkExcRun4, _chkRun5, _chkExcRun5, _filterInfo
             };
             _split.Panel1.Controls.AddRange(leftControls);
@@ -427,6 +443,14 @@ namespace WelfareLottery
                 Size = new Size(110, 32)
             };
             _btnShowDraw.Click += (_, __) => ShowDrawData();
+
+            _btnDrawNumSpecs = new Button
+            {
+                Text = "号码数组筛选",
+                Location = new Point(538, 12),
+                Size = new Size(120, 32)
+            };
+            _btnDrawNumSpecs.Click += (_, __) => OpenDrawNumberSpecDialog();
 
             _btnDrawSettings = new Button
             {
@@ -529,7 +553,7 @@ namespace WelfareLottery
             _split.Panel2.Controls.AddRange(new Control[]
             {
                 _btnFetch, lblStart, _numStartYear, lblEnd, _numEndYear,
-                _btnShowDraw, _btnDrawSettings,
+                _btnShowDraw, _btnDrawNumSpecs, _btnDrawSettings,
                 lblDrawFilter, _chkDrawRun3, _chkDrawExcRun3, _chkDrawRun4, _chkDrawExcRun4,
                 _chkDrawRun5, _chkDrawExcRun5, _drawFilterInfo,
                 _drawStatus, _gridDraw
@@ -537,6 +561,7 @@ namespace WelfareLottery
 
             StylePrimary(_btnFetch);
             StyleSecondary(_btnShowDraw);
+            StyleSecondary(_btnDrawNumSpecs);
             StyleSecondary(_btnDrawSettings);
             StyleGrid(_gridDraw);
         }
@@ -771,6 +796,7 @@ namespace WelfareLottery
             _chkExcRun3.Enabled = idle;
             _chkExcRun4.Enabled = idle;
             _chkExcRun5.Enabled = idle;
+            _btnNumSpecs.Enabled = idle;
 
             UseWaitCursor = _busy || _loadingPage || _filtering;
         }
@@ -797,20 +823,22 @@ namespace WelfareLottery
             }
 
             var filter = CurrentRunFilter();
+            bool noCondition = filter == RunFilter.None && _numberSpecs.Count == 0;
             _filtering = true;
             UpdateUiState();
-            _status.Text = filter == RunFilter.None ? "正在清除红球形态过滤 ..." : "正在按红球连续形态过滤 ...";
+            _status.Text = noCondition ? "正在清除所有过滤条件 ..." : "正在按红球形态/号码数组过滤 ...";
             _status.ForeColor = Color.DimGray;
 
             try
             {
-                long kept = await Task.Run(() => CombinationService.ApplyRunFilter(filter));
+                long kept = await Task.Run(() => CombinationService.ApplyFilters(filter, _numberSpecs));
                 _totalRows = kept;
                 UpdateFilterInfo(kept);
 
-                _status.Text = filter == RunFilter.None
+                _status.Text = noCondition
                     ? $"已清除过滤：共 {kept:N0} 条组合"
-                    : $"红球形态过滤已生效：剩余 {kept:N0} / {CombinationService.GetCount():N0} 条组合";
+                    : $"过滤已生效：剩余 {kept:N0} / {CombinationService.GetCount():N0} 条组合" +
+                      (_numberSpecs.Count > 0 ? $"（含号码数组 {(_numberSpecs.Count == 1 ? "1 组" : $"{_numberSpecs.Count} 组")}）" : "");
                 _status.ForeColor = Color.DimGray;
             }
             catch (Exception ex)
@@ -837,9 +865,20 @@ namespace WelfareLottery
                 return;
             }
 
+            string specInfo = _numberSpecs.Count > 0 ? $"，数组 {_numberSpecs.Count} 组" : "";
             _filterInfo.Text = kept >= total
-                ? $"未过滤：{total:N0} 条"
-                : $"过滤后：{kept:N0} / {total:N0} 条（已滤除 {total - kept:N0} 条）";
+                ? $"未过滤：{total:N0} 条{specInfo}"
+                : $"过滤后：{kept:N0} / {total:N0} 条（已滤除 {total - kept:N0} 条{specInfo}）";
+        }
+
+        /// <summary>打开号码数组筛选设置（左侧组合查询），确定后立即应用</summary>
+        private void OpenNumberSpecDialog()
+        {
+            using var dialog = new NumberSpecForm(_numberSpecs);
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+            _numberSpecs = dialog.Specs;
+            _ = ApplyRunFilterAsync();
         }
 
         /// <summary>按号码查询（满 6 红走组合排名精确定位，否则在内存中按包含匹配扫描）</summary>
@@ -1146,7 +1185,7 @@ namespace WelfareLottery
         private void SetDrawBusy(bool busy, string? message)
         {
             _btnFetch.Enabled = _btnShowDraw.Enabled = _btnDrawSettings.Enabled =
-                _numStartYear.Enabled = _numEndYear.Enabled = !busy;
+                _numStartYear.Enabled = _numEndYear.Enabled = _btnDrawNumSpecs.Enabled = !busy;
             _chkDrawRun3.Enabled = _chkDrawRun4.Enabled = _chkDrawRun5.Enabled = !busy;
             _chkDrawExcRun3.Enabled = _chkDrawExcRun4.Enabled = _chkDrawExcRun5.Enabled = !busy;
             _btnFetch.Text = busy ? "正在获取 ..." : "按年份获取到内存";
@@ -1170,7 +1209,7 @@ namespace WelfareLottery
 
                 var full = LotteryService.GetDataTable();
 
-                if (!run3 && !run4 && !run5)
+                if (!run3 && !run4 && !run5 && _drawNumSpecs.Count == 0)
                 {
                     _gridDraw.DataSource = full;
                     _drawFilterInfo.Text = "未过滤";
@@ -1185,21 +1224,24 @@ namespace WelfareLottery
                 if (run3) conditions.Add(exc3 ? "不含三连号" : "含三连号");
                 if (run4) conditions.Add(exc4 ? "不含四连号" : "含四连号");
                 if (run5) conditions.Add(exc5 ? "不含五连号" : "含五连号");
+                if (_drawNumSpecs.Count > 0)
+                    conditions.Add($"号码数组 {_drawNumSpecs.Count} 组");
 
                 var filtered = full.Clone();
                 foreach (DataRow row in full.Rows)
                 {
-                    // 多个条件同时勾选时为"且"关系
+                    // 多个条件同时生效时为"且"关系
                     bool keep = true;
                     if (run3) keep &= exc3 ? !HasConsecutiveRun(row, 3) : HasConsecutiveRun(row, 3);
                     if (run4) keep &= exc4 ? !HasConsecutiveRun(row, 4) : HasConsecutiveRun(row, 4);
                     if (run5) keep &= exc5 ? !HasConsecutiveRun(row, 5) : HasConsecutiveRun(row, 5);
+                    if (keep) keep &= MatchesDrawNumberSpecs(row);
                     if (keep) filtered.ImportRow(row);
                 }
 
                 _gridDraw.DataSource = filtered;
                 _drawFilterInfo.Text = $"条件：{string.Join(" 且 ", conditions)}";
-                _drawStatus.Text = $"红球形态过滤：{filtered.Rows.Count:N0} / {full.Rows.Count:N0} 期满足选中条件。";
+                _drawStatus.Text = $"过滤完成：{filtered.Rows.Count:N0} / {full.Rows.Count:N0} 期满足全部选中条件。";
                 _drawStatus.ForeColor = Color.DimGray;
             }
             catch (Exception ex)
@@ -1224,6 +1266,38 @@ namespace WelfareLottery
                 if (run >= length) return true;
             }
             return false;
+        }
+
+        /// <summary>右侧号码数组条件匹配：所有非零位置须完全相等；多组之间为"且"关系</summary>
+        private bool MatchesDrawNumberSpecs(DataRow row)
+        {
+            foreach (var spec in _drawNumSpecs)
+            {
+                bool match = true;
+                for (int i = 0; i < 6 && match; i++)
+                {
+                    int actual = row["Red" + (i + 1)] == DBNull.Value ? 0 : Convert.ToInt32(row["Red" + (i + 1)]);
+                    if (spec.Reds[i] != 0 && actual != spec.Reds[i]) match = false;
+                }
+                if (match && spec.Blue != 0)
+                {
+                    int blue = row["Blue"] == DBNull.Value ? 0 : Convert.ToInt32(row["Blue"]);
+                    if (blue != spec.Blue) match = false;
+                }
+
+                if (spec.Exclude ? match : !match) return false;
+            }
+            return true;
+        }
+
+        /// <summary>打开号码数组筛选设置（右侧历史开奖），确定后立即应用</summary>
+        private void OpenDrawNumberSpecDialog()
+        {
+            using var dialog = new NumberSpecForm(_drawNumSpecs);
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+            _drawNumSpecs = dialog.Specs;
+            ApplyDrawFilter();
         }
     }
 }

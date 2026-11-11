@@ -170,7 +170,7 @@ static class Program
             foreach (var (name, filter, minRun) in cases)
             {
                 sw.Restart();
-                long kept = CombinationService.ApplyRunFilter(filter);
+                long kept = CombinationService.ApplyFilters(filter, Array.Empty<NumberSpec>());
                 long elapsed = sw.ElapsedMilliseconds;
                 long expected = total - CountRedWithRun(minRun, 33) * CombinationService.BlueCount;
                 bool match = kept == expected;
@@ -179,7 +179,7 @@ static class Program
             }
 
             // 分页结果确实不含被排除形态
-            long kept3 = CombinationService.ApplyRunFilter(RunFilter.Exclude3);
+            long kept3 = CombinationService.ApplyFilters(RunFilter.Exclude3, Array.Empty<NumberSpec>());
             var (page, pageTotal) = CombinationService.QueryPageData(0, 100);
             bool pageOk = pageTotal == kept3 && page.Rows.Count > 0 &&
                           page.Rows.Cast<DataRow>().All(r => MaxRunRow(r) < 3);
@@ -189,7 +189,7 @@ static class Program
 
             // 精确查询受过滤影响
             var (blocked, exact, _) = CombinationService.QueryByNumbers(new[] { 1, 2, 3, 4, 5, 6 }, 1);
-            CombinationService.ApplyRunFilter(RunFilter.None);
+            CombinationService.ApplyFilters(RunFilter.None, Array.Empty<NumberSpec>());
             var (allowed, _, _) = CombinationService.QueryByNumbers(new[] { 1, 2, 3, 4, 5, 6 }, 1);
             bool queryOk = exact && blocked.Rows.Count == 0 && allowed.Rows.Count == 1;
             ok &= queryOk;

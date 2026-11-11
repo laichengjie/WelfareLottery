@@ -25,6 +25,13 @@ namespace WelfareLottery
     }
 
     /// <summary>
+    /// 号码数组筛选条件：Red1..Red6（升序位置，0 = 不限）+ Blue（0 = 不限）。
+    /// Exclude = false（包含）：只保留与所有非零位置完全匹配的记录；
+    /// Exclude = true（排除）：剔除与所有非零位置完全匹配的记录。
+    /// </summary>
+    public sealed record NumberSpec(int[] Reds, int Blue, bool Exclude);
+
+    /// <summary>
     /// 双色球全部组合服务：C(33,6) * 16 = 17,721,088 种组合。
     /// 组合数据只在内存中生成与查询，不写入数据库；
     /// 每行 7 字节（红球 1-6 + 蓝球），全量约 118 MB，查询时按需转成 DataTable。
@@ -52,7 +59,8 @@ namespace WelfareLottery
             public long Count;                // 总条数
             public int[]? FilterIndex;        // 过滤后的源行号；null 表示未过滤
             public long FilteredCount;        // 过滤后条数
-            public RunFilter Filter;          // 当前过滤条件
+            public RunFilter Filter;          // 当前形态过滤条件
+            public IReadOnlyList<NumberSpec> Specs = Array.Empty<NumberSpec>();   // 当前号码数组条件
             public int[]? Buffer;             // 复用的行号缓冲（避免每次过滤都分配 71 MB）
         }
 
@@ -164,30 +172,32 @@ namespace WelfareLottery
         }
 
         /// <summary>
-        /// 应用红球连续形态过滤（只作用于红区，蓝球不受影响）。
-        /// 返回过滤后剩余条数；条件为 None 时清除过滤。
+        /// 应用组合过滤：红球连续形态（RunFilter）+ 号码数组条件（NumberSpec），
+        /// 两者同时生效（各自内部条件为"且"）。任一为空时只应用另一个。
+        /// 返回过滤后剩余条数；两者都为空时清除过滤。
         /// 1772 万条全量扫描一次约 100 ms，界面应在后台线程调用。
         /// </summary>
-        public static long ApplyRunFilter(RunFilter filter)
+        public static long ApplyFilters(RunFilter filter, IReadOnlyList<NumberSpec> specs)
         {
             var state = _state;
             var rows = state.Rows;
             long count = state.Count;
+            specs ??= Array.Empty<NumberSpec>();
 
             if (rows == null || count == 0)
             {
                 lock (_gate)
                 {
-                    _state = new State { Rows = rows, Count = count, Filter = filter, FilteredCount = count };
+                    _state = new State { Rows = rows, Count = count, Filter = filter, Specs = specs, FilteredCount = count };
                 }
                 return 0;
             }
 
-            if (filter == RunFilter.None)
+            if (filter == RunFilter.None && specs.Count == 0)
             {
                 lock (_gate)
                 {
-                    _state = new State { Rows = rows, Count = count, FilteredCount = count, Filter = RunFilter.None };
+                    _state = new State { Rows = rows, Count = count, FilteredCount = count, Filter = RunFilter.None, Specs = specs };
                 }
                 return count;
             }
@@ -202,6 +212,7 @@ namespace WelfareLottery
             {
                 int offset = (int)(c * BlueCount * FieldsPerRow);
                 if (!MatchesRunFilter(rows, offset, filter)) continue;
+                if (!MatchesNumberSpecs(rows, offset, specs)) continue;
 
                 long source = c * BlueCount;
                 for (int b = 0; b < BlueCount && kept < count; b++)
@@ -215,12 +226,33 @@ namespace WelfareLottery
                     Rows = rows,
                     Count = count,
                     Filter = filter,
+                    Specs = specs,
                     FilterIndex = kept == count ? null : index,   // index 长度可能大于 kept，用 FilteredCount 限制读取
                     FilteredCount = kept,
                     Buffer = index
                 };
             }
             return kept;
+        }
+
+        /// <summary>判断该行是否满足所有号码数组条件（多组之间为"且"关系）</summary>
+        private static bool MatchesNumberSpecs(byte[] rows, int offset, IReadOnlyList<NumberSpec> specs)
+        {
+            for (int s = 0; s < specs.Count; s++)
+            {
+                var spec = specs[s];
+                bool match = true;
+
+                for (int i = 0; i < 6; i++)
+                {
+                    int want = spec.Reds[i];
+                    if (want != 0 && rows[offset + i] != want) { match = false; break; }
+                }
+                if (match && spec.Blue != 0 && rows[offset + 6] != spec.Blue) match = false;
+
+                if (spec.Exclude ? match : !match) return false;
+            }
+            return true;
         }
 
         /// <summary>
@@ -328,6 +360,7 @@ namespace WelfareLottery
                     }
 
                     if (filter != RunFilter.None && !MatchesRunFilter(rows, o, filter)) continue;
+                    if (!MatchesNumberSpecs(rows, o, state.Specs)) continue;
 
                     table.Rows.Add(ordered[0], ordered[1], ordered[2], ordered[3], ordered[4], ordered[5], b);
                     if (table.Rows.Count >= limit) break;
